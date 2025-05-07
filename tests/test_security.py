@@ -65,3 +65,30 @@ def test_hash_password_internal_error(monkeypatch):
     with pytest.raises(ValueError):
         hash_password("test")
 
+def test_hash_empty_password():
+    """Test hashing an empty password."""
+    password = ""
+    hashed = hash_password(password)
+    assert hashed is not None
+    assert isinstance(hashed, str)
+    assert hashed.startswith('$2b$')
+    # Verify that the empty password is valid for the hashed value
+    assert verify_password(password, hashed) is True
+
+def test_verify_password_invalid_hash_length():
+    """Test verifying a password with an invalid hash length."""
+    # Invalid hash (not a bcrypt hash)
+    invalid_hash = "1234invalidhash"
+    with pytest.raises(ValueError):
+        verify_password("secure_password", invalid_hash)
+def test_hash_special_characters_password():
+    """Test hashing a password with special characters."""
+    password = "secure!@#password$%^"
+    hashed = hash_password(password)
+    assert hashed is not None
+    assert isinstance(hashed, str)
+    assert hashed.startswith('$2b$')
+
+    # Verify the password is correctly verified after hashing
+    assert verify_password(password, hashed) is True
+    
