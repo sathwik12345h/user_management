@@ -161,3 +161,10 @@ async def test_unlock_user_account(db_session, locked_user):
     assert unlocked, "The account should be unlocked"
     refreshed_user = await UserService.get_by_id(db_session, locked_user.id)
     assert not refreshed_user.is_locked, "The user should no longer be locked"
+
+
+# Test user deletion when the user is an admin
+async def test_delete_admin_user(db_session, admin_user):
+    deletion_success = await UserService.delete(db_session, admin_user.id)
+    assert deletion_success is True, "Admin user should be deletable"
+    assert await UserService.get_by_id(db_session, admin_user.id) is None, "Admin user should no longer exist in the database"

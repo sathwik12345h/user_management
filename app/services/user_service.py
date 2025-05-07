@@ -1,6 +1,7 @@
 from builtins import Exception, bool, classmethod, int, str
 from datetime import datetime, timezone
 import secrets
+from fastapi import Request
 from typing import Optional, Dict, List
 from pydantic import ValidationError
 from sqlalchemy import func, null, update, select
@@ -15,6 +16,8 @@ from uuid import UUID
 from app.services.email_service import EmailService
 from app.models.user_model import UserRole
 import logging
+from sqlalchemy import or_, and_
+from sqlalchemy.orm import Query
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -30,6 +33,60 @@ class UserService:
             logger.error(f"Database error: {e}")
             await session.rollback()
             return None
+    @staticmethod
+    async def search(
+        session: AsyncSession,
+        search_params: Dict[str, str],
+        skip: int = 0,
+        limit: int = 10
+    ) -> list[User]:
+        query: Query = select(User)
+
+        if search_params.get("email"):
+            query = query.filter(User.email.ilike(f"%{search_params['email']}%"))
+        if search_params.get("nickname"):
+            query = query.filter(User.nickname.ilike(f"%{search_params['nickname']}%"))
+        if search_params.get("first_name"):
+            query = query.filter(User.first_name.ilike(f"%{search_params['first_name']}%"))
+        if search_params.get("last_name"):
+            query = query.filter(User.last_name.ilike(f"%{search_params['last_name']}%"))
+
+        query = query.offset(skip).limit(limit)
+        result = await session.execute(query)
+        return result.scalars().all()
+    
+    @classmethod
+    async def search_users(cls, session: AsyncSession, username: Optional[str] = None, email: Optional[str] = None, 
+                           role: Optional[UserRole] = None, is_locked: Optional[bool] = None, 
+                           registration_date_start: Optional[datetime] = None, registration_date_end: Optional[datetime] = None,
+                           skip: int = 0, limit: int = 10) -> List[User]:
+        try:
+            query = select(User)
+
+            filters = []
+            if username:
+                filters.append(User.nickname.ilike(f"%{username}%"))
+            if email:
+                filters.append(User.email.ilike(f"%{email}%"))
+            if role:
+                filters.append(User.role == role)
+            if is_locked is not None:
+                filters.append(User.is_locked == is_locked)
+            if registration_date_start:
+                filters.append(User.created_at >= registration_date_start)
+            if registration_date_end:
+                filters.append(User.created_at <= registration_date_end)
+
+            if filters:
+                query = query.filter(and_(*filters))
+
+            query = query.offset(skip).limit(limit)
+            result = await cls._execute_query(session, query)
+            return result.scalars().all() if result else []
+
+        except SQLAlchemyError as e:
+            logger.error(f"Error during user search: {e}")
+            return []
 
     @classmethod
     async def _fetch_user(cls, session: AsyncSession, **filters) -> Optional[User]:

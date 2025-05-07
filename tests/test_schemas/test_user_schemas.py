@@ -3,8 +3,14 @@ import pytest
 from pydantic import ValidationError
 from datetime import datetime
 from app.schemas.user_schemas import UserBase, UserCreate, UserUpdate, UserResponse, UserListResponse, LoginRequest
+from fastapi.testclient import TestClient
+from app.main import app  # Assuming your FastAPI app is defined in 'main.py'
 
 # Fixtures for common test data
+@pytest.fixture
+def client():
+    return TestClient(app)
+
 @pytest.fixture
 def user_base_data():
     return {
@@ -43,15 +49,12 @@ def user_response_data(user_base_data):
         "last_name": user_base_data["last_name"],
         "role": user_base_data["role"],
         "email": user_base_data["email"],
-        # "last_login_at": datetime.now(),
-        # "created_at": datetime.now(),
-        # "updated_at": datetime.now(),
         "links": []
     }
 
 @pytest.fixture
 def login_request_data():
-    return {"email": "john_doe_123@emai.com", "password": "SecurePassword123!"}
+    return {"email": "john_doe_123@example.com", "password": "SecurePassword123!"}
 
 # Tests for UserBase
 def test_user_base_valid(user_base_data):
@@ -75,7 +78,6 @@ def test_user_update_valid(user_update_data):
 def test_user_response_valid(user_response_data):
     user = UserResponse(**user_response_data)
     assert user.id == user_response_data["id"]
-    # assert user.last_login_at == user_response_data["last_login_at"]
 
 # Tests for LoginRequest
 def test_login_request_valid(login_request_data):
@@ -108,3 +110,61 @@ def test_user_base_url_invalid(url, user_base_data):
     user_base_data["profile_picture_url"] = url
     with pytest.raises(ValidationError):
         UserBase(**user_base_data)
+
+# Test for User Creation (POST route)
+# def test_create_user(client, user_create_data):
+#     response = client.post("/users/", json=user_create_data)
+#     data = response.json()
+#     assert data["nickname"] == user_create_data["nickname"]
+#     assert data["email"] == user_create_data["email"]
+
+# Test for Invalid User Creation (e.g., missing data)
+def test_create_user_invalid(client, user_create_data):
+    invalid_data = {**user_create_data, "nickname": ""}
+    response = client.post("/users/", json=invalid_data)
+    data = response.json()
+    assert "detail" in data
+
+# Test for User Update (PATCH route)
+# def test_update_user(client, user_update_data):
+#     # Assuming a user with ID 1 exists
+#     response = client.patch("/users/1", json=user_update_data)
+#     data = response.json()
+#     assert data["email"] == user_update_data["email"]
+#     assert data["nickname"] == user_update_data["nickname"]
+
+# Test for Invalid User Update
+def test_update_user_invalid(client):
+    invalid_data = {"email": "invalid-email", "nickname": ""}
+    response = client.patch("/users/1", json=invalid_data)
+    data = response.json()
+    assert "detail" in data
+
+# Test for User Login Invalid (wrong credentials)
+def test_login_user_invalid(client):
+    invalid_data = {"email": "wrong_email", "password": "wrong_password"}
+    response = client.post("/login", json=invalid_data)
+    data = response.json()
+    assert "detail" in data
+
+# Test for Get User Details (GET route)
+# def test_get_user_details(client):
+#     # Assuming a user with ID 1 exists
+#     response = client.get("/users/1")
+#     data = response.json()
+#     assert "id" in data
+#     assert "nickname" in data
+
+# Test for Get Non-Existent User (Bad Request)
+def test_get_user_not_found(client):
+    response = client.get("/users/99999")  # Non-existent ID
+    data = response.json()
+    assert "detail" in data
+
+
+# Test for Delete Non-Existent User (Conflict)
+def test_delete_user_not_found(client):
+    response = client.delete("/users/99999")  # Non-existent ID
+    data = response.json()
+    assert "detail" in data
+    
