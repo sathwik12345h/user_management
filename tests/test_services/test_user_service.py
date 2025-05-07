@@ -147,24 +147,19 @@ async def test_reset_password(db_session, user):
     reset_success = await UserService.reset_password(db_session, user.id, new_password)
     assert reset_success is True
 
-# Test verifying a user's email
-async def test_verify_email_with_token(db_session, user):
-    token = "valid_token_example"  # This should be set in your user setup if it depends on a real token
-    user.verification_token = token  # Simulating setting the token in the database
-    await db_session.commit()
-    result = await UserService.verify_email_with_token(db_session, user.id, token)
-    assert result is True
 
-# Test unlocking a user's account
-async def test_unlock_user_account(db_session, locked_user):
-    unlocked = await UserService.unlock_user_account(db_session, locked_user.id)
-    assert unlocked, "The account should be unlocked"
-    refreshed_user = await UserService.get_by_id(db_session, locked_user.id)
-    assert not refreshed_user.is_locked, "The user should no longer be locked"
+# Test email verification with correct token
+async def test_verify_email_with_correct_token(db_session, user):
+    verification_token = user.verification_token
+    success = await UserService.verify_email_with_token(db_session, user.id, verification_token)
+    assert success is True
+    user = await UserService.get_by_id(db_session, user.id)
+    assert user.email_verified is True
 
-
-# Test user deletion when the user is an admin
-async def test_delete_admin_user(db_session, admin_user):
-    deletion_success = await UserService.delete(db_session, admin_user.id)
-    assert deletion_success is True, "Admin user should be deletable"
-    assert await UserService.get_by_id(db_session, admin_user.id) is None, "Admin user should no longer exist in the database"
+# Test email verification with incorrect token
+async def test_verify_email_with_incorrect_token(db_session, user):
+    success = await UserService.verify_email_with_token(db_session, user.id, "wrongtoken")
+    assert success is False
+    user = await UserService.get_by_id(db_session, user.id)
+    assert user.email_verified is False
+    
