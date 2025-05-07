@@ -51,5 +51,4 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "details": jsonable_encoder(exc.errors()),
         },
     )
-
 app.include_router(user_routes.router)
