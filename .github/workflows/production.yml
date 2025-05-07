@@ -71,7 +71,7 @@ jobs:
         with:
           push: true
           tags: sathwiks12/user_management:${{ github.sha }} # Uses the Git SHA for tagging
-          platforms: linux/amd64,linux/arm64 # Multi-platform support
+          platforms: linux/amd64,linux/arm64 # Multi-platform supportt
           cache-from: type=registry,ref=sathwiks12/user_management:cache
           cache-to: type=inline,mode=max
           
