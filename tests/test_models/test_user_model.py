@@ -139,3 +139,73 @@ async def test_update_user_role(db_session: AsyncSession, user: User):
     await db_session.commit()
     await db_session.refresh(user)
     assert user.role == UserRole.ADMIN, "Role update should persist correctly in the database"
+
+@pytest.mark.asyncio
+async def test_failed_login_attempts_reset(db_session: AsyncSession, user: User):
+    """
+    Tests that failed login attempts are reset after a successful login.
+    """
+    # Simulate a failed login attempt
+    user.failed_login_attempts += 3
+    await db_session.commit()
+    await db_session.refresh(user)
+    
+    assert user.failed_login_attempts == 3, "Failed login attempts should be 3 after increment"
+
+    # Simulate a successful login by resetting failed login attempts
+    user.failed_login_attempts = 0
+    await db_session.commit()
+    await db_session.refresh(user)
+    
+    assert user.failed_login_attempts == 0, "Failed login attempts should reset to 0 after successful login"
+
+@pytest.mark.asyncio
+async def test_last_login_at_updated_on_successful_login(db_session: AsyncSession, user: User):
+    """
+    Tests that the `last_login_at` field is updated only after a successful login.
+    """
+    initial_last_login = user.last_login_at
+
+    # Simulate a failed login attempt (no update to last_login_at)
+    user.failed_login_attempts += 1
+    await db_session.commit()
+    await db_session.refresh(user)
+    
+    assert user.last_login_at == initial_last_login, "last_login_at should not update on failed login"
+
+    # Simulate a successful login (update last_login_at)
+    user.failed_login_attempts = 0
+    user.last_login_at = datetime.now(timezone.utc)
+    await db_session.commit()
+    await db_session.refresh(user)
+    
+    assert user.last_login_at != initial_last_login, "last_login_at should update on successful login"
+
+@pytest.mark.asyncio
+async def test_update_user_email(db_session: AsyncSession, user: User):
+    """
+    Tests updating the user's email and ensuring it persists correctly.
+    """
+    new_email = "updateduser@example.com"
+    
+    # Update the email
+    user.email = new_email
+    await db_session.commit()
+    await db_session.refresh(user)
+    
+    assert user.email == new_email, "User email should be updated correctly in the database"
+
+@pytest.mark.asyncio
+async def test_update_user_nickname(db_session: AsyncSession, user: User):
+    """
+    Tests updating the user's nickname and ensuring it persists correctly.
+    """
+    new_nickname = "newnickname"
+    
+    # Update the nickname
+    user.nickname = new_nickname
+    await db_session.commit()
+    await db_session.refresh(user)
+    
+    assert user.nickname == new_nickname, "User nickname should be updated correctly in the database"
+    
