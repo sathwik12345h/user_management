@@ -188,7 +188,6 @@ class UserService:
         result = await session.execute(query)
         count = result.scalar()
         return count
-    
     @classmethod
     async def unlock_user_account(cls, session: AsyncSession, user_id: UUID) -> bool:
         user = await cls.get_by_id(session, user_id)
