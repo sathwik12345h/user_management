@@ -66,15 +66,16 @@ class UserService:
             logger.info(f"User Role: {new_user.role}")
             user_count = await cls.count(session)
             new_user.role = UserRole.ADMIN if user_count == 0 else UserRole.ANONYMOUS            
-            if new_user.role == UserRole.ADMIN:
-                new_user.email_verified = True
+            # if new_user.role == UserRole.ADMIN:
+            #     new_user.email_verified = True
 
-            else:
-                new_user.verification_token = generate_verification_token()
-                await email_service.send_verification_email(new_user)
+            # else:
+            new_user.verification_token = generate_verification_token()
+                # await email_service.send_verification_email(new_user)
 
             session.add(new_user)
             await session.commit()
+            await email_service.send_verification_email(new_user)
             return new_user
         except ValidationError as e:
             logger.error(f"Validation error during user creation: {e}")
@@ -170,7 +171,9 @@ class UserService:
         if user and user.verification_token == token:
             user.email_verified = True
             user.verification_token = None  # Clear the token once used
-            user.role = UserRole.AUTHENTICATED
+            # user.role = UserRole.AUTHENTICATED
+            if user.role == UserRole.ANONYMOUS:
+                user.role = UserRole.AUTHENTICATED
             session.add(user)
             await session.commit()
             return True
@@ -188,6 +191,7 @@ class UserService:
         result = await session.execute(query)
         count = result.scalar()
         return count
+    
     @classmethod
     async def unlock_user_account(cls, session: AsyncSession, user_id: UUID) -> bool:
         user = await cls.get_by_id(session, user_id)
@@ -198,3 +202,4 @@ class UserService:
             await session.commit()
             return True
         return False
+    
